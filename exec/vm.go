@@ -490,23 +490,22 @@ func NewProcess(vm *VM) *Process {
 // ReadAt implements the ReaderAt interface: it copies into p
 // the content of memory at offset off.
 func (proc *Process) ReadAt(p []byte, off int64) (int, error) {
+	var length int
+
 	mem := proc.vm.Memory()
 
-	var length int
-	if len(mem) < len(p)+int(off) {
-		length = len(mem) - int(off)
-	} else {
-		length = len(p)
+	if p == nil || len(p) == 0 {
+		return 0, errors.New("the read buf invalid")
 	}
 
-	copy(p, mem[off:off+int64(length)])
-
-	var err error
-	if length < len(p) {
-		err = io.ErrShortBuffer
+	step := off
+	for length =0; length < len(p) && mem[step] != byte(0); {
+		p[length] = mem[step]
+		length++
+		step++
 	}
 
-	return length, err
+	return length, nil
 }
 
 // WriteAt implements the WriterAt interface: it writes the content of p
@@ -527,6 +526,8 @@ func (proc *Process) WriteAt(p []byte, off int64) (int, error) {
 	if length < len(p) {
 		err = io.ErrShortWrite
 	}
+
+	mem[off+int64(length)] = byte(0)
 
 	return length, err
 }
