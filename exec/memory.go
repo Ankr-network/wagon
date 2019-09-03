@@ -6,12 +6,24 @@ package exec
 
 import (
 	"errors"
+	"fmt"
 	"math"
+
+	"github.com/go-interpreter/wagon/exec/common"
+	"github.com/go-interpreter/wagon/exec/heapmemory"
+	"github.com/go-interpreter/wagon/wasm"
 )
 
 // ErrOutOfBoundsMemoryAccess is the error value used while trapping the VM
 // when it detects an out of bounds access to the linear memory.
 var ErrOutOfBoundsMemoryAccess = errors.New("exec: out of bounds memory access")
+
+const (
+	wasmStackSize     = 16384 //16 * 1024
+	vmStackStartIndex = 16384 //16 *1024
+	MinHeapMemorySize = 64 * 1024 //64k
+	MaxHeapMemorySize = 1024 *1024 //1M
+)
 
 func (vm *VM) fetchBaseAddr() int {
 	return int(vm.fetchUint32() + uint32(vm.popInt32()))
@@ -209,6 +221,53 @@ func (vm *VM) growMemory() {
 	_ = vm.fetchInt8() // reserved (https://github.com/WebAssembly/design/blob/27ac254c854994103c24834a994be16f74f54186/BinaryEncoding.md#memory-related-operators-described-here)
 	curLen := len(vm.memory) / wasmPageSize
 	n := vm.popInt32()
-	vm.memory = append(vm.memory, make([]byte, n*wasmPageSize)...)
+	vm.heapMem.GrowMemory(uint(n*wasmPageSize))
 	vm.pushInt32(int32(curLen))
+}
+
+func (vm *VM) heapBase(module *wasm.Module) (int32, error) {
+	hbExportEntry, ok := module.Export.Entries["__heap_base"]
+	if !ok {
+	   return -1, errors.New("there is no __heap_base")
+	}
+
+	if hbExportEntry.Kind != wasm.ExternalGlobal {
+		return -1, errors.New("invlid __heap_base")
+	}
+
+	gEntry := module.GetGlobal(int(hbExportEntry.Index))
+	if gEntry == nil {
+		return -1, fmt.Errorf("can't find global entry: index=%d", hbExportEntry.Index)
+	}
+
+	heapBaseIndex, err := vm.module.ExecInitExpr(gEntry.Init)
+	if err != nil {
+		return -1, err
+	}
+
+	return heapBaseIndex.(int32), nil
+}
+
+func (vm *VM) initMemory(module *wasm.Module) error {
+	initSize := uint(module.Memory.Entries[0].Limits.Initial)*wasmPageSize
+	if !common.IsPowOf2(initSize) {
+		initSize = common.FixSize(initSize)
+	}
+
+	if initSize < MinHeapMemorySize {
+		initSize = MinHeapMemorySize
+	}
+
+	heapBaseIndex, err := vm.heapBase(module)
+	if err != nil {
+		return err
+	}
+	vm.memory  = make([]byte, uint(heapBaseIndex) + initSize)
+	vm.heapMem = heapmemory.NewHeapMemory(initSize)
+
+    if module.LinearMemoryIndexSpace[0] != nil {
+    	copy(vm.memory[vmStackStartIndex:], module.LinearMemoryIndexSpace[0][wasmStackSize:])
+	}
+
+	return nil
 }

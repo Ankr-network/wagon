@@ -13,6 +13,7 @@ import (
 	"math"
 
 	"github.com/go-interpreter/wagon/disasm"
+	"github.com/go-interpreter/wagon/exec/heapmemory"
 	"github.com/go-interpreter/wagon/exec/internal/compile"
 	"github.com/go-interpreter/wagon/wasm"
 	ops "github.com/go-interpreter/wagon/wasm/operators"
@@ -59,6 +60,7 @@ type VM struct {
 	module  *wasm.Module
 	globals []uint64
 	memory  []byte
+	heapMem *heapmemory.HeapMemory
 	funcs   []function
 
 	funcTable [256]func()
@@ -109,8 +111,11 @@ func NewVM(module *wasm.Module, opts ...VMOption) (*VM, error) {
 		if len(module.Memory.Entries) > 1 {
 			return nil, ErrMultipleLinearMemories
 		}
-		vm.memory = make([]byte, uint(module.Memory.Entries[0].Limits.Initial)*wasmPageSize)
-		copy(vm.memory, module.LinearMemoryIndexSpace[0])
+
+		err := vm.initMemory(module)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	vm.funcs = make([]function, len(module.FunctionIndexSpace))
