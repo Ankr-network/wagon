@@ -34,6 +34,13 @@ func (fct *Function) IsHost() bool {
 	return fct.Host != reflect.Value{}
 }
 
+type HeapMemory interface {
+	Init(totalSize uint)
+	Malloc(size uint) (uint64, error)
+	Free(offset uint64) error
+	GrowMemory(size uint) error
+}
+
 // Module represents a parsed WebAssembly module:
 // http://webassembly.org/docs/modules/
 type Module struct {
@@ -61,6 +68,8 @@ type Module struct {
 	// the limit of each table is its capacity (cap)
 	TableIndexSpace        [][]uint32
 	LinearMemoryIndexSpace [][]byte
+
+	HeapMem HeapMemory
 
 	imports struct {
 		Funcs    []uint32

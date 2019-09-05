@@ -13,8 +13,8 @@ import (
 	"math"
 
 	"github.com/go-interpreter/wagon/disasm"
-	"github.com/go-interpreter/wagon/exec/heapmemory"
 	"github.com/go-interpreter/wagon/exec/internal/compile"
+	"github.com/go-interpreter/wagon/log"
 	"github.com/go-interpreter/wagon/wasm"
 	ops "github.com/go-interpreter/wagon/wasm/operators"
 )
@@ -60,7 +60,6 @@ type VM struct {
 	module  *wasm.Module
 	globals []uint64
 	memory  []byte
-	heapMem *heapmemory.HeapMemory
 	funcs   []function
 
 	funcTable [256]func()
@@ -75,6 +74,8 @@ type VM struct {
 	abort bool // Flag for host functions to terminate execution
 
 	nativeBackend *nativeCompiler
+
+	log log.Logger
 }
 
 // As per the WebAssembly spec: https://github.com/WebAssembly/design/blob/27ac254c854994103c24834a994be16f74f54186/Semantics.md#linear-memory
@@ -107,21 +108,21 @@ func NewVM(module *wasm.Module, opts ...VMOption) (*VM, error) {
 		opt(&options)
 	}
 
+	vm.funcs = make([]function, len(module.FunctionIndexSpace))
+	vm.globals = make([]uint64, len(module.GlobalIndexSpace))
+	vm.newFuncTable()
+	vm.module = module
+
 	if module.Memory != nil && len(module.Memory.Entries) != 0 {
 		if len(module.Memory.Entries) > 1 {
 			return nil, ErrMultipleLinearMemories
 		}
 
-		err := vm.initMemory(module)
+		err := vm.initMemory()
 		if err != nil {
 			return nil, err
 		}
 	}
-
-	vm.funcs = make([]function, len(module.FunctionIndexSpace))
-	vm.globals = make([]uint64, len(module.GlobalIndexSpace))
-	vm.newFuncTable()
-	vm.module = module
 
 	nNatives := 0
 	for i, fn := range module.FunctionIndexSpace {
@@ -481,6 +482,14 @@ func (vm *VM) Close() error {
 	return nil
 }
 
+func (vm *VM) SetLogger(log log.Logger) {
+	vm.log = log
+}
+
+func (vm *VM) Logger() log.Logger {
+	return vm.log
+}
+
 // Process is a proxy passed to host functions in order to access
 // things such as memory and control.
 type Process struct {
@@ -541,6 +550,11 @@ func (proc *Process) WriteAt(p []byte, off int64) (int, error) {
 func (proc *Process) MemSize() int {
 	return len(proc.vm.Memory())
 }
+
+func (proc *Process) VM() *VM {
+	return proc.vm
+}
+
 
 // Terminate stops the execution of the current module.
 func (proc *Process) Terminate() {
