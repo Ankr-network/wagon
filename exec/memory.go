@@ -28,6 +28,8 @@ var (
 	InvalidMemIndex = errors.New("invalid memory index")
 )
 
+type memory []byte
+
 func (vm *VM) fetchBaseAddr() int {
 	return int(vm.fetchUint32() + uint32(vm.popInt32()))
 }
@@ -276,8 +278,36 @@ func (vm *VM) initMemory() error {
 	vm.memory  = make([]byte, uint(heapBaseIndex) + initSize)
 	vm.module.HeapMem.Init(initSize)
 
-    if vm.module.LinearMemoryIndexSpace[0] != nil {
-    	copy(vm.memory[vmStackStartIndex:], vm.module.LinearMemoryIndexSpace[0][wasmStackSize:])
+	if vm.module.LinearMemoryIndexSpace[0] != nil {
+		copy(vm.memory[vmStackStartIndex:], vm.module.LinearMemoryIndexSpace[0][wasmStackSize:])
+	}
+
+	return nil
+}
+
+func (vm *VM) initDelegateModuleMemory(module *wasm.Module) error {
+	if module  == nil {
+		return errors.New("vm module nil")
+	}
+
+	initSize := uint(vm.module.Memory.Entries[0].Limits.Initial)*wasmPageSize
+	if !common.IsPowOf2(initSize) {
+		initSize = common.FixSize(initSize)
+	}
+
+	if initSize < MinHeapMemorySize {
+		initSize = MinHeapMemorySize
+	}
+
+	heapBaseIndex, err := vm.heapBase()
+	if err != nil {
+		return err
+	}
+	vm.memory  = make([]byte, uint(heapBaseIndex) + initSize)
+	vm.module.HeapMem.Init(initSize)
+
+	if vm.module.LinearMemoryIndexSpace[0] != nil {
+		copy(vm.memory[vmStackStartIndex:], vm.module.LinearMemoryIndexSpace[0][wasmStackSize:])
 	}
 
 	return nil
@@ -357,4 +387,35 @@ func (vm *VM) SetBytes(bytes []byte) (uint64, error) {
 	vm.memory[index+uint64(lenBytes)] = byte(0)
 
     return index, nil
+}
+
+// ReadAt implements the ReaderAt interface: it copies into p
+// the content of memory at offset off.
+func (vm *VM) ReadAt(p []byte, off int64) (int, error) {
+	var length int
+
+	mem := vm.Memory()
+
+	if p == nil || len(p) == 0 {
+		return 0, errors.New("the read buf invalid")
+	}
+
+	step := off
+	for length =0; length < len(p) && mem[step] != byte(0); {
+		p[length] = mem[step]
+		length++
+		step++
+	}
+
+	return length, nil
+}
+
+func (vm *VM) ReadString(off int64) (string, error) {
+	toReads := make([]byte, 500)
+	len, err := vm.ReadAt(toReads, off)
+	if err != nil {
+		return "", err
+	}
+
+	return string(toReads[:len]), nil
 }

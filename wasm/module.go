@@ -44,6 +44,7 @@ type HeapMemory interface {
 // Module represents a parsed WebAssembly module:
 // http://webassembly.org/docs/modules/
 type Module struct {
+	Name     string
 	Version  uint32
 	Sections []Section
 

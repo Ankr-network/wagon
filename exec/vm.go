@@ -76,6 +76,10 @@ type VM struct {
 	nativeBackend *nativeCompiler
 
 	log log.Logger
+
+	contrInvoker ContractInvoker
+
+	vmContext *VMContext
 }
 
 // As per the WebAssembly spec: https://github.com/WebAssembly/design/blob/27ac254c854994103c24834a994be16f74f54186/Semantics.md#linear-memory
@@ -112,6 +116,7 @@ func NewVM(module *wasm.Module, opts ...VMOption) (*VM, error) {
 	vm.globals = make([]uint64, len(module.GlobalIndexSpace))
 	vm.newFuncTable()
 	vm.module = module
+	vm.vmContext = NewVMContext()
 
 	if module.Memory != nil && len(module.Memory.Entries) != 0 {
 		if len(module.Memory.Entries) > 1 {
@@ -168,7 +173,7 @@ func NewVM(module *wasm.Module, opts ...VMOption) (*VM, error) {
 	}
 
 	if module.Start != nil {
-		_, err := vm.ExecCode(int64(module.Start.Index))
+		_, err := vm.ExecCode(int64(module.Start.Index), "")
 		if err != nil {
 			return nil, err
 		}
@@ -317,7 +322,7 @@ func (vm *VM) pushFloat32(f float32) {
 // ExecCode calls the function with the given index and arguments.
 // fnIndex should be a valid index into the function index space of
 // the VM's module.
-func (vm *VM) ExecCode(fnIndex int64, args ...uint64) (rtrn interface{}, err error) {
+func (vm *VM) ExecCode(fnIndex int64, rtnType string, args ...uint64) (rtrn interface{}, err error) {
 	// If used as a library, client code should set vm.RecoverPanic to true
 	// in order to have an error returned.
 	if vm.RecoverPanic {
@@ -360,14 +365,24 @@ func (vm *VM) ExecCode(fnIndex int64, args ...uint64) (rtrn interface{}, err err
 		vm.ctx.locals[i] = arg
 	}
 
+	vm.vmContext.runningVM = vm
+
 	res := vm.execCode(compiled)
 	if compiled.returns {
 		rtrnType := vm.module.GetFunction(int(fnIndex)).Sig.ReturnTypes[0]
 		switch rtrnType {
 		case wasm.ValueTypeI32:
-			rtrn = uint32(res)
+			if rtnType == "string" {
+				rtrn, _ = vm.vmContext.runningVM.ReadString(int64(int32(res)))
+			}else {
+				rtrn = int32(res)
+			}
 		case wasm.ValueTypeI64:
-			rtrn = uint64(res)
+			if rtnType == "string" {
+				rtrn, _ = vm.vmContext.runningVM.ReadString(int64(res))
+			}else {
+				rtrn = int64(res)
+			}
 		case wasm.ValueTypeF32:
 			rtrn = math.Float32frombits(uint32(res))
 		case wasm.ValueTypeF64:
@@ -490,42 +505,43 @@ func (vm *VM) Logger() log.Logger {
 	return vm.log
 }
 
+func (vm *VM) SetContrInvoker(contrInvoker ContractInvoker){
+	vm.contrInvoker = contrInvoker
+}
+
+func (vm *VM) ContrInvoker() ContractInvoker{
+	return vm.contrInvoker
+}
+
+func (vm *VM) Module() *wasm.Module {
+	return vm.module
+}
+
 // Process is a proxy passed to host functions in order to access
 // things such as memory and control.
 type Process struct {
-	vm *VM
+	vmContext *VMContext
 }
 
 // NewProcess creates a VM interface object for host functions
 func NewProcess(vm *VM) *Process {
-	return &Process{vm: vm}
+	return &Process{vmContext: vm.vmContext}
 }
 
 // ReadAt implements the ReaderAt interface: it copies into p
 // the content of memory at offset off.
 func (proc *Process) ReadAt(p []byte, off int64) (int, error) {
-	var length int
+	return proc.vmContext.runningVM.ReadAt(p, off)
+}
 
-	mem := proc.vm.Memory()
-
-	if p == nil || len(p) == 0 {
-		return 0, errors.New("the read buf invalid")
-	}
-
-	step := off
-	for length =0; length < len(p) && mem[step] != byte(0); {
-		p[length] = mem[step]
-		length++
-		step++
-	}
-
-	return length, nil
+func (proc *Process) ReadString(off int64) (string, error) {
+	return proc.vmContext.runningVM.ReadString(off)
 }
 
 // WriteAt implements the WriterAt interface: it writes the content of p
 // into the VM memory at offset off.
 func (proc *Process) WriteAt(p []byte, off int64) (int, error) {
-	mem := proc.vm.Memory()
+	mem := proc.vmContext.runningVM.Memory()
 
 	var length int
 	if len(mem) < len(p)+int(off) {
@@ -548,15 +564,18 @@ func (proc *Process) WriteAt(p []byte, off int64) (int, error) {
 
 // MemSize returns the current allocated memory size in bytes.
 func (proc *Process) MemSize() int {
-	return len(proc.vm.Memory())
+	return len(proc.vmContext.runningVM.Memory())
 }
 
 func (proc *Process) VM() *VM {
-	return proc.vm
+	return proc.vmContext.runningVM
 }
-
 
 // Terminate stops the execution of the current module.
 func (proc *Process) Terminate() {
-	proc.vm.abort = true
+	proc.vmContext.runningVM.abort = true
+}
+
+func (proc *Process) VMContext() *VMContext{
+	return proc.vmContext
 }
