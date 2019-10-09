@@ -1,6 +1,9 @@
 package exec
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 const (
 	maxVMNest = 64
@@ -10,6 +13,7 @@ type VMContext struct{
 	runningVM *VM
 	callVM    []*VM
 	vmIndex   int
+	JsonObjectCache []map[string]json.RawMessage
 }
 
 func NewVMContext() *VMContext {
