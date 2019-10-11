@@ -79,6 +79,10 @@ type VM struct {
 
 	contrInvoker ContractInvoker
 
+	contractAddr string
+	ownerAddr    string
+	callerAddr   string
+
 	vmContext *VMContext
 }
 
@@ -105,7 +109,7 @@ func EnableAOT(v bool) VMOption {
 
 // NewVM creates a new VM from a given module and options. If the module defines
 // a start function, it will be executed.
-func NewVM(module *wasm.Module, opts ...VMOption) (*VM, error) {
+func NewVM(contractAddr string, ownerAddr string, callerAddr string, module *wasm.Module, opts ...VMOption) (*VM, error) {
 	var vm VM
 	var options config
 	for _, opt := range opts {
@@ -117,6 +121,9 @@ func NewVM(module *wasm.Module, opts ...VMOption) (*VM, error) {
 	vm.newFuncTable()
 	vm.module = module
 	vm.vmContext = NewVMContext()
+	vm.contractAddr = contractAddr
+	vm.ownerAddr = ownerAddr
+	vm.callerAddr = callerAddr
 
 	if module.Memory != nil && len(module.Memory.Entries) != 0 {
 		if len(module.Memory.Entries) > 1 {
@@ -515,6 +522,18 @@ func (vm *VM) ContrInvoker() ContractInvoker{
 
 func (vm *VM) Module() *wasm.Module {
 	return vm.module
+}
+
+func (vm *VM) ContractAddr() string {
+	return vm.contractAddr
+}
+
+func (vm *VM) OwnerAddr() string {
+	return vm.ownerAddr
+}
+
+func (vm *VM) CallerAddr() string {
+	return vm.callerAddr
 }
 
 // Process is a proxy passed to host functions in order to access
