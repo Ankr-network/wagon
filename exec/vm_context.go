@@ -3,6 +3,8 @@ package exec
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/Ankr-network/wagon/exec/gas"
 )
 
 const (
@@ -13,6 +15,7 @@ type VMContext struct{
 	runningVM *VM
 	callVM    []*VM
 	vmIndex   int
+	gasMetric gas.GasMetric
 	JsonObjectCache []map[string]json.RawMessage
 }
 
@@ -57,4 +60,12 @@ func (vmc *VMContext) TopVM() (*VM, error) {
 	}
 
 	return vmc.callVM[vmc.vmIndex], nil
+}
+
+func (vmc *VMContext) SetGasMetric(metric gas.GasMetric) {
+	vmc.gasMetric = metric
+}
+
+func (vmc *VMContext) GasMetric() gas.GasMetric{
+	return vmc.gasMetric
 }

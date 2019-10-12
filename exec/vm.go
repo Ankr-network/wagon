@@ -11,8 +11,10 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/big"
 
 	"github.com/go-interpreter/wagon/disasm"
+	"github.com/go-interpreter/wagon/exec/gas"
 	"github.com/go-interpreter/wagon/exec/internal/compile"
 	"github.com/go-interpreter/wagon/log"
 	"github.com/go-interpreter/wagon/wasm"
@@ -109,7 +111,7 @@ func EnableAOT(v bool) VMOption {
 
 // NewVM creates a new VM from a given module and options. If the module defines
 // a start function, it will be executed.
-func NewVM(contractAddr string, ownerAddr string, callerAddr string, module *wasm.Module, opts ...VMOption) (*VM, error) {
+func NewVM(contractAddr string, ownerAddr string, callerAddr string, metric gas.GasMetric, module *wasm.Module, opts ...VMOption) (*VM, error) {
 	var vm VM
 	var options config
 	for _, opt := range opts {
@@ -124,6 +126,8 @@ func NewVM(contractAddr string, ownerAddr string, callerAddr string, module *was
 	vm.contractAddr = contractAddr
 	vm.ownerAddr = ownerAddr
 	vm.callerAddr = callerAddr
+
+	vm.vmContext.SetGasMetric(metric)
 
 	if module.Memory != nil && len(module.Memory.Entries) != 0 {
 		if len(module.Memory.Entries) > 1 {
@@ -409,17 +413,33 @@ outer:
 		vm.ctx.pc++
 		switch op {
 		case ops.Return:
+			gasUsed := new(big.Int).SetUint64(gas.OpsGasTable[op])
+			if !vm.vmContext.gasMetric.SpendGas(gasUsed) {
+				panic("OutOfGas, vm execCode terminated")
+			}
 			break outer
 		case compile.OpJmp:
+			gasUsed := new(big.Int).SetUint64(gas.CompileGasTable[op])
+			if !vm.vmContext.gasMetric.SpendGas(gasUsed) {
+				panic("OutOfGas, vm execCode terminated")
+			}
 			vm.ctx.pc = vm.fetchInt64()
 			continue
 		case compile.OpJmpZ:
+			gasUsed := new(big.Int).SetUint64(gas.CompileGasTable[op])
+			if !vm.vmContext.gasMetric.SpendGas(gasUsed) {
+				panic("OutOfGas, vm execCode terminated")
+			}
 			target := vm.fetchInt64()
 			if vm.popUint32() == 0 {
 				vm.ctx.pc = target
 				continue
 			}
 		case compile.OpJmpNz:
+			gasUsed := new(big.Int).SetUint64(gas.CompileGasTable[op])
+			if !vm.vmContext.gasMetric.SpendGas(gasUsed) {
+				panic("OutOfGas, vm execCode terminated")
+			}
 			target := vm.fetchInt64()
 			preserveTop := vm.fetchBool()
 			discard := vm.fetchInt64()
@@ -436,6 +456,10 @@ outer:
 				continue
 			}
 		case ops.BrTable:
+			gasUsed := new(big.Int).SetUint64(gas.OpsGasTable[op])
+			if !vm.vmContext.gasMetric.SpendGas(gasUsed) {
+				panic("OutOfGas, vm execCode terminated")
+			}
 			index := vm.fetchInt64()
 			label := vm.popInt32()
 			cf, ok := vm.funcs[vm.ctx.curFunc].(compiledFunction)
@@ -464,18 +488,34 @@ outer:
 			}
 			continue
 		case compile.OpDiscard:
+			gasUsed := new(big.Int).SetUint64(gas.CompileGasTable[op])
+			if !vm.vmContext.gasMetric.SpendGas(gasUsed) {
+				panic("OutOfGas, vm execCode terminated")
+			}
 			place := vm.fetchInt64()
 			vm.ctx.stack = vm.ctx.stack[:len(vm.ctx.stack)-int(place)]
 		case compile.OpDiscardPreserveTop:
+			gasUsed := new(big.Int).SetUint64(gas.CompileGasTable[op])
+			if !vm.vmContext.gasMetric.SpendGas(gasUsed) {
+				panic("OutOfGas, vm execCode terminated")
+			}
 			top := vm.ctx.stack[len(vm.ctx.stack)-1]
 			place := vm.fetchInt64()
 			vm.ctx.stack = vm.ctx.stack[:len(vm.ctx.stack)-int(place)]
 			vm.pushUint64(top)
 
 		case ops.WagonNativeExec:
+			gasUsed := new(big.Int).SetUint64(gas.OpsGasTable[op])
+			if !vm.vmContext.gasMetric.SpendGas(gasUsed) {
+				panic("OutOfGas, vm execCode terminated")
+			}
 			i := vm.fetchUint32()
 			vm.nativeCodeInvocation(i)
 		default:
+			gasUsed := new(big.Int).SetUint64(gas.OpsGasTable[op])
+			if !vm.vmContext.gasMetric.SpendGas(gasUsed) {
+				panic("OutOfGas, vm execCode terminated")
+			}
 			vm.funcTable[op]()
 		}
 	}
