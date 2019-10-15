@@ -14,8 +14,8 @@ import (
 	"math/big"
 
 	"github.com/go-interpreter/wagon/disasm"
-	vmevent "github.com/Ankr-network/wagon/exec/event"
-	"github.com/Ankr-network/wagon/exec/gas"
+	vmevent "github.com/go-interpreter/wagon/exec/event"
+	"github.com/go-interpreter/wagon/exec/gas"
 	"github.com/go-interpreter/wagon/exec/internal/compile"
 	"github.com/go-interpreter/wagon/log"
 	"github.com/go-interpreter/wagon/wasm"
