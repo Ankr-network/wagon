@@ -14,7 +14,8 @@ import (
 	"math/big"
 
 	"github.com/go-interpreter/wagon/disasm"
-	"github.com/go-interpreter/wagon/exec/gas"
+	vmevent "github.com/Ankr-network/wagon/exec/event"
+	"github.com/Ankr-network/wagon/exec/gas"
 	"github.com/go-interpreter/wagon/exec/internal/compile"
 	"github.com/go-interpreter/wagon/log"
 	"github.com/go-interpreter/wagon/wasm"
@@ -111,7 +112,7 @@ func EnableAOT(v bool) VMOption {
 
 // NewVM creates a new VM from a given module and options. If the module defines
 // a start function, it will be executed.
-func NewVM(contractAddr string, ownerAddr string, callerAddr string, metric gas.GasMetric, module *wasm.Module, opts ...VMOption) (*VM, error) {
+func NewVM(contractAddr string, ownerAddr string, callerAddr string, metric gas.GasMetric, publisher vmevent.Publisher, module *wasm.Module, opts ...VMOption) (*VM, error) {
 	var vm VM
 	var options config
 	for _, opt := range opts {
@@ -128,6 +129,7 @@ func NewVM(contractAddr string, ownerAddr string, callerAddr string, metric gas.
 	vm.callerAddr = callerAddr
 
 	vm.vmContext.SetGasMetric(metric)
+	vm.vmContext.SetPublisher(publisher)
 
 	if module.Memory != nil && len(module.Memory.Entries) != 0 {
 		if len(module.Memory.Entries) > 1 {

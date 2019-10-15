@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	vmevent "github.com/Ankr-network/wagon/exec/event"
 	"github.com/Ankr-network/wagon/exec/gas"
 )
 
@@ -16,6 +17,7 @@ type VMContext struct{
 	callVM    []*VM
 	vmIndex   int
 	gasMetric gas.GasMetric
+	publisher vmevent.Publisher
 	JsonObjectCache []map[string]json.RawMessage
 }
 
@@ -68,4 +70,12 @@ func (vmc *VMContext) SetGasMetric(metric gas.GasMetric) {
 
 func (vmc *VMContext) GasMetric() gas.GasMetric{
 	return vmc.gasMetric
+}
+
+func (vmc *VMContext) SetPublisher(publisher vmevent.Publisher) {
+	vmc.publisher = publisher
+}
+
+func (vmc *VMContext) Publisher() vmevent.Publisher {
+	return vmc.publisher
 }
