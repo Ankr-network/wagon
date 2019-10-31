@@ -11,9 +11,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/go-interpreter/wagon/exec"
-	"github.com/go-interpreter/wagon/validate"
-	"github.com/go-interpreter/wagon/wasm"
+	"github.com/Ankr-network/wagon/exec"
+	"github.com/Ankr-network/wagon/validate"
+	"github.com/Ankr-network/wagon/wasm"
 )
 
 func main() {

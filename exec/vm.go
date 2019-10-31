@@ -13,13 +13,13 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/go-interpreter/wagon/disasm"
-	vmevent "github.com/go-interpreter/wagon/exec/event"
-	"github.com/go-interpreter/wagon/exec/gas"
-	"github.com/go-interpreter/wagon/exec/internal/compile"
-	"github.com/go-interpreter/wagon/log"
-	"github.com/go-interpreter/wagon/wasm"
-	ops "github.com/go-interpreter/wagon/wasm/operators"
+	"github.com/Ankr-network/wagon/disasm"
+	vmevent "github.com/Ankr-network/wagon/exec/event"
+	"github.com/Ankr-network/wagon/exec/gas"
+	"github.com/Ankr-network/wagon/exec/internal/compile"
+	"github.com/Ankr-network/wagon/log"
+	"github.com/Ankr-network/wagon/wasm"
+	ops "github.com/Ankr-network/wagon/wasm/operators"
 )
 
 var (

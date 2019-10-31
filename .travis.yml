@@ -1,5 +1,5 @@
 language: go
-go_import_path: github.com/go-interpreter/wagon
+go_import_path: github.com/Ankr-network/wagon
 os:
   - linux
 

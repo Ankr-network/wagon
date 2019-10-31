@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/go-interpreter/wagon/exec/common"
-	"github.com/go-interpreter/wagon/wasm"
+	"github.com/Ankr-network/wagon/exec/common"
+	"github.com/Ankr-network/wagon/wasm"
 )
 
 // ErrOutOfBoundsMemoryAccess is the error value used while trapping the VM

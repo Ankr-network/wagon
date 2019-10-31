@@ -7,7 +7,7 @@ package operators
 import (
 	"regexp"
 
-	"github.com/go-interpreter/wagon/wasm"
+	"github.com/Ankr-network/wagon/wasm"
 )
 
 var reCvrtOp = regexp.MustCompile(`(.+)\.(?:[a-z]|\_)+\/(.+)`)

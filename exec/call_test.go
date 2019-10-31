@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/go-interpreter/wagon/wasm"
+	"github.com/Ankr-network/wagon/wasm"
 )
 
 func TestHostCall(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/go-interpreter/wagon/wasm/leb128"
+	"github.com/Ankr-network/wagon/wasm/leb128"
 )
 
 type Marshaler interface {

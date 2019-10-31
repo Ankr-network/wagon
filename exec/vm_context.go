@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	vmevent "github.com/go-interpreter/wagon/exec/event"
-	"github.com/go-interpreter/wagon/exec/gas"
+	vmevent "github.com/Ankr-network/wagon/exec/event"
+	"github.com/Ankr-network/wagon/exec/gas"
 )
 
 const (

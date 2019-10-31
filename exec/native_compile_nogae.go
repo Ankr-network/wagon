@@ -9,7 +9,7 @@ package exec
 import (
 	"encoding/binary"
 
-	"github.com/go-interpreter/wagon/exec/internal/compile"
+	"github.com/Ankr-network/wagon/exec/internal/compile"
 )
 
 func init() {

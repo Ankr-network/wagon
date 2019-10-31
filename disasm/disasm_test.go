@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-interpreter/wagon/disasm"
-	"github.com/go-interpreter/wagon/wasm"
+	"github.com/Ankr-network/wagon/disasm"
+	"github.com/Ankr-network/wagon/wasm"
 )
 
 func TestDisassemble(t *testing.T) {

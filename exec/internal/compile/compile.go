@@ -42,8 +42,8 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"github.com/go-interpreter/wagon/disasm"
-	ops "github.com/go-interpreter/wagon/wasm/operators"
+	"github.com/Ankr-network/wagon/disasm"
+	ops "github.com/Ankr-network/wagon/wasm/operators"
 )
 
 // A small note on the usage of discard instructions:

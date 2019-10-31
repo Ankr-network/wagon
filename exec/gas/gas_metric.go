@@ -3,8 +3,8 @@ package gas
 import (
   "math/big"
 
-  "github.com/go-interpreter/wagon/exec/internal/compile"
-  ops "github.com/go-interpreter/wagon/wasm/operators"
+  "github.com/Ankr-network/wagon/exec/internal/compile"
+  ops "github.com/Ankr-network/wagon/wasm/operators"
 )
 
 const (
